@@ -479,4 +479,252 @@ const MODULES = [
   ).join('');
 }
 function shiftDecrypt(text, k) {
-  return shift
+  return shiftEncrypt(text, -k);
+}`
+  },
+  {
+    id: 'mult', glyph: '×', name: 'Multiplicative Cipher', desc: 'c = a·p mod 26, a coprime with 26',
+    fields: [{ id: 'a', label: 'Multiplier (a)', type: 'number', value: 7 }],
+    encrypt: (t, v) => multEncrypt(t, v.a), decrypt: (t, v) => multDecrypt(t, v.a),
+    validate: (v) => gcd(Number(v.a), 26) !== 1 ? `a=${v.a} is not coprime with 26. Try one of: ${COPRIME_WITH_26.join(', ')}` : null,
+    visualize: (el, t, v) => renderSubstitutionVisual(el, c => numToLetter(letterToNum(c) * Number(v.a))),
+    code: `function multEncrypt(text, a) {
+  return clean(text).split('').map(c =>
+    numToLetter(letterToNum(c) * a)
+  ).join('');
+}
+function multDecrypt(text, a) {
+  const aInv = modInverse(a, 26);
+  return clean(text).split('').map(c =>
+    numToLetter(letterToNum(c) * aInv)
+  ).join('');
+}`
+  },
+  {
+    id: 'affine', glyph: 'ax+b', name: 'Affine Cipher', desc: 'c = a·p + b mod 26',
+    fields: [{ id: 'a', label: 'a', type: 'number', value: 5 }, { id: 'b', label: 'b', type: 'number', value: 8 }],
+    encrypt: (t, v) => affineEncrypt(t, v.a, v.b), decrypt: (t, v) => affineDecrypt(t, v.a, v.b),
+    validate: (v) => gcd(Number(v.a), 26) !== 1 ? `a=${v.a} is not coprime with 26. Try one of: ${COPRIME_WITH_26.join(', ')}` : null,
+    visualize: (el, t, v) => renderSubstitutionVisual(el, c => numToLetter(Number(v.a) * letterToNum(c) + Number(v.b))),
+    code: `function affineEncrypt(text, a, b) {
+  return clean(text).split('').map(c =>
+    numToLetter(a * letterToNum(c) + b)
+  ).join('');
+}
+function affineDecrypt(text, a, b) {
+  const aInv = modInverse(a, 26);
+  return clean(text).split('').map(c =>
+    numToLetter(aInv * (letterToNum(c) - b))
+  ).join('');
+}`
+  },
+  {
+    id: 'playfair', glyph: '▦', name: 'Playfair Cipher', desc: '5×5 key square, digraph substitution',
+    fields: [{ id: 'keyword', label: 'Keyword', type: 'text', value: 'MONARCHY' }],
+    encrypt: (t, v) => playfairEncrypt(t, v.keyword), decrypt: (t, v) => playfairDecrypt(t, v.keyword),
+    validate: (v) => !cleanText(v.keyword) ? 'Enter a keyword.' : null,
+    visualize: (el, t, v) => renderPlayfairVisual(el, t, v),
+    code: `// Rules per letter pair, based on position in the 5x5 grid:
+// same row      -> shift each letter one cell right
+// same column   -> shift each letter one cell down
+// rectangle     -> swap to the opposite corner's column
+function playfairEncryptPair(grid, [a, b]) {
+  const pa = findPos(grid, a), pb = findPos(grid, b);
+  if (pa.r === pb.r)
+    return grid[pa.r][(pa.c+1)%5] + grid[pb.r][(pb.c+1)%5];
+  if (pa.c === pb.c)
+    return grid[(pa.r+1)%5][pa.c] + grid[(pb.r+1)%5][pb.c];
+  return grid[pa.r][pb.c] + grid[pb.r][pa.c];
+}`
+  },
+  {
+    id: 'hill', glyph: '⊞', name: 'Hill Cipher', desc: '2×2 matrix, linear algebra mod 26',
+    fields: [{ id: 'matrix', label: 'Key matrix: a b c d', type: 'text', value: '3 3 2 5' }],
+    encrypt: (t, v) => hillEncrypt(t, v.matrix), decrypt: (t, v) => hillDecrypt(t, v.matrix),
+    validate: (v) => {
+      const m = hillMatrixFromKey(v.matrix);
+      if (!m) return 'Enter exactly 4 numbers, e.g. "3 3 2 5".';
+      if (gcd(matDet2(m), 26) !== 1) return `Determinant (${matDet2(m)}) is not coprime with 26 — matrix is not invertible.`;
+      return null;
+    },
+    visualize: (el, t, v) => renderHillVisual(el, t, v),
+    code: `function hillTransform(text, matrix) {
+  let t = clean(text);
+  if (t.length % 2) t += 'X';
+  let out = '';
+  for (let i = 0; i < t.length; i += 2) {
+    const p1 = letterToNum(t[i]), p2 = letterToNum(t[i+1]);
+    out += numToLetter(matrix[0][0]*p1 + matrix[0][1]*p2);
+    out += numToLetter(matrix[1][0]*p1 + matrix[1][1]*p2);
+  }
+  return out;
+}
+// Decrypt uses the modular inverse of the matrix instead.`
+  },
+  {
+    id: 'vigenere', glyph: '⟳', name: 'Vigenère Cipher', desc: 'Repeating-keyword polyalphabetic shift',
+    fields: [{ id: 'keyword', label: 'Keyword', type: 'text', value: 'KEY' }],
+    encrypt: (t, v) => vigenereEncrypt(t, v.keyword), decrypt: (t, v) => vigenereDecrypt(t, v.keyword),
+    validate: (v) => !cleanText(v.keyword) ? 'Enter a keyword.' : null,
+    visualize: (el, t, v) => renderVigenereVisual(el, t, v),
+    code: `function vigenereEncrypt(text, key) {
+  const t = clean(text), k = clean(key);
+  return t.split('').map((c, i) =>
+    numToLetter(letterToNum(c) + letterToNum(k[i % k.length]))
+  ).join('');
+}`
+  },
+  {
+    id: 'railfence', glyph: '⩙', name: 'Rail Fence Cipher', desc: 'Zigzag transposition across rails',
+    fields: [{ id: 'rails', label: 'Number of rails', type: 'number', value: 3 }],
+    encrypt: (t, v) => railFenceEncrypt(t, v.rails), decrypt: (t, v) => railFenceDecrypt(t, v.rails),
+    validate: (v) => Number(v.rails) < 2 ? 'Rails must be 2 or more.' : null,
+    visualize: (el, t, v) => renderRailFenceVisual(el, t, v),
+    code: `function railFenceEncrypt(text, rails) {
+  const t = clean(text);
+  const fence = Array.from({ length: rails }, () => []);
+  let r = 0, dir = 1;
+  for (const ch of t) {
+    fence[r].push(ch);
+    if (r === 0) dir = 1;
+    else if (r === rails - 1) dir = -1;
+    r += dir;
+  }
+  return fence.flat().join('');
+}`
+  }
+];
+
+/* ============================================================
+   APP STATE + RENDERING
+   ============================================================ */
+let currentModuleId = null;
+const app = document.getElementById('app');
+
+function goHome(){ currentModuleId = null; render(); }
+function openModule(id){ currentModuleId = id; render(); }
+
+function render(){
+  app.innerHTML = '';
+  if (!currentModuleId) renderHome(); else renderModule(MODULES.find(m => m.id === currentModuleId));
+}
+
+function renderHome(){
+  const header = document.createElement('div');
+  header.className = 'topbar';
+  header.innerHTML = `<span class="wordmark">Cipher<span>Lab</span></span>`;
+  app.appendChild(header);
+
+  const tagline = document.createElement('p');
+  tagline.className = 'home-tagline';
+  tagline.textContent = 'Seven classical ciphers from number theory — pick one to encrypt, decrypt, and see how it works step by step.';
+  app.appendChild(tagline);
+
+  const grid = document.createElement('div');
+  grid.className = 'home-grid';
+  MODULES.forEach(m => {
+    const card = document.createElement('button');
+    card.className = 'cipher-card';
+    card.innerHTML = `<span class="cipher-glyph">${m.glyph}</span><span class="cipher-card-name">${m.name}</span><span class="cipher-card-desc">${m.desc}</span>`;
+    card.onclick = () => openModule(m.id);
+    grid.appendChild(card);
+  });
+  app.appendChild(grid);
+
+  const footer = document.createElement('footer');
+  footer.className = 'note';
+  footer.textContent = 'Everything runs locally in your browser — nothing is uploaded anywhere.';
+  app.appendChild(footer);
+}
+
+function renderModule(m){
+  const header = document.createElement('div');
+  header.className = 'topbar';
+  header.innerHTML = `<button class="back-btn" aria-label="Back">‹</button>
+    <div><div class="module-title">${m.name}</div><div class="module-sub">${m.desc}</div></div>`;
+  header.querySelector('.back-btn').onclick = goHome;
+  app.appendChild(header);
+
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+
+  const fieldsHtml = m.fields.map(f =>
+    `<div><label class="field-label">${f.label}</label>
+     <input type="${f.type}" id="field-${f.id}" value="${f.value}" />
+     </div>`
+  ).join('');
+
+  panel.innerHTML = `
+    <div class="panel-label">input</div>
+    <label class="field-label">Text</label>
+    <textarea id="input-text" placeholder="Type a message...">HELLO WORLD</textarea>
+    ${m.fields.length > 1 ? `<div class="field-row">${fieldsHtml}</div>` : fieldsHtml}
+    <div class="btn-row">
+      <button class="action" id="btn-encrypt">Encrypt</button>
+      <button class="action secondary" id="btn-decrypt">Decrypt</button>
+    </div>
+    <div id="error-slot"></div>
+    <div id="output-slot"></div>
+  `;
+  app.appendChild(panel);
+
+  const visualPanel = document.createElement('div');
+  visualPanel.className = 'panel';
+  visualPanel.innerHTML = `<div class="panel-label">how it works</div><div id="visual-slot"></div>`;
+  app.appendChild(visualPanel);
+
+  const codeToggle = document.createElement('button');
+  codeToggle.className = 'code-toggle';
+  codeToggle.textContent = '</> view code';
+  const codeBlock = document.createElement('pre');
+  codeBlock.className = 'code-block';
+  codeBlock.style.display = 'none';
+  codeBlock.textContent = m.code;
+  codeToggle.onclick = () => {
+    const visible = codeBlock.style.display !== 'none';
+    codeBlock.style.display = visible ? 'none' : 'block';
+    codeToggle.textContent = visible ? '</> view code' : '</> hide code';
+  };
+  app.appendChild(codeToggle);
+  app.appendChild(codeBlock);
+
+  function getValues(){
+    const v = {};
+    m.fields.forEach(f => { v[f.id] = document.getElementById(`field-${f.id}`).value; });
+    return v;
+  }
+  function getText(){ return document.getElementById('input-text').value; }
+
+  function runVisual(){
+    const el = document.getElementById('visual-slot');
+    try { m.visualize(el, getText(), getValues()); } catch (e) { el.innerHTML = ''; }
+  }
+  function run(mode){
+    const errorSlot = document.getElementById('error-slot');
+    const outputSlot = document.getElementById('output-slot');
+    errorSlot.innerHTML = '';
+    outputSlot.innerHTML = '';
+    const v = getValues();
+    const validationError = m.validate(v);
+    if (validationError) { errorSlot.innerHTML = `<div class="error-box">${validationError}</div>`; return; }
+    try {
+      const result = mode === 'encrypt' ? m.encrypt(getText(), v) : m.decrypt(getText(), v);
+      outputSlot.innerHTML = `<div class="output-box">${result || '(empty — enter some text)'}</div>`;
+    } catch (e) {
+      errorSlot.innerHTML = `<div class="error-box">${e.message}</div>`;
+    }
+  }
+
+  document.getElementById('btn-encrypt').onclick = () => run('encrypt');
+  document.getElementById('btn-decrypt').onclick = () => run('decrypt');
+  document.getElementById('input-text').addEventListener('input', runVisual);
+  m.fields.forEach(f => document.getElementById(`field-${f.id}`).addEventListener('input', runVisual));
+
+  runVisual();
+}
+
+render();
+
+</script>
+</body>
+</html>

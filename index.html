@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Cipher Lab — Classical Cryptography</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #12161d;
+    --panel: #1b212b;
+    --panel-2: #212836;
+    --line: #2a3240;
+    --brass: #c9974b;
+    --brass-dim: #8a6a38;
+    --text: #e7e4db;
+    --text-dim: #8b93a3;
+    --danger: #d9705f;
+    --good: #6fae7f;
+    --radius: 3px;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+    --sans: 'Inter', -apple-system, sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 100% 28px,
+      var(--bg);
+    background-attachment: local;
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+  a, button{ font-family: inherit; }
+  #app{ max-width: 640px; margin: 0 auto; padding: 20px 16px 48px; }
+
+  /* ---------- header ---------- */
+  .topbar{
+    display:flex; align-items:center; gap:12px;
+    margin-bottom: 22px;
+  }
+  .back-btn{
+    background: var(--panel); border: 1px solid var(--line); color: var(--brass);
+    width: 38px; height: 38px; border-radius: var(--radius);
+    font-family: var(--mono); font-size: 18px; cursor: pointer;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink: 0;
+  }
+  .back-btn:active{ background: var(--panel-2); }
+  .wordmark{
+    font-family: var(--mono); font-weight: 700; font-size: 21px;
+    color: var(--text); letter-spacing: 0.3px;
+  }
+  .wordmark span{ color: var(--brass); }
+  .home-tagline{
+    color: var(--text-dim); font-size: 14px; line-height: 1.5;
+    margin: -12px 0 24px; max-width: 46ch;
+  }
+  .module-title{
+    font-family: var(--mono); font-weight: 700; font-size: 19px;
+  }
+  .module-sub{
+    color: var(--text-dim); font-size: 13px; margin-top: 2px;
+  }
+
+  /* ---------- home grid ---------- */
+  .home-grid{
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+  .cipher-card{
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 14px 12px;
+    text-align: left; cursor: pointer; color: var(--text);
+    display:flex; flex-direction: column; gap: 8px; min-height: 96px;
+  }
+  .cipher-card:active{ border-color: var(--brass-dim); background: var(--panel-2); }
+  .cipher-glyph{
+    font-family: var(--mono); font-size: 20px; color: var(--brass);
+    line-height: 1;
+  }
+  .cipher-card-name{ font-weight: 600; font-size: 14px; line-height: 1.3; }
+  .cipher-card-desc{ font-size: 11.5px; color: var(--text-dim); line-height: 1.4; }
+
+  /* ---------- form / panels ---------- */
+  .panel{
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 16px; margin-top: 14px;
+  }
+  .panel-label{
+    font-family: var(--mono); font-size: 11px; color: var(--brass);
+    letter-spacing: 0.5px; margin-bottom: 10px;
+  }
+  label.field-label{
+    display:block; font-size: 12.5px; color: var(--text-dim); margin-bottom: 5px;
+  }
+  input[type=text], input[type=number], textarea{
+    width: 100%; background: var(--bg); border: 1px solid var(--line);
+    color: var(--text); border-radius: var(--radius); padding: 10px 11px;
+    font-family: var(--mono); font-size: 14px; margin-bottom: 12px;
+  }
+  input:focus, textarea:focus, button:focus{
+    outline: 2px solid var(--brass); outline-offset: 1px;
+  }
+  textarea{ resize: vertical; min-height: 64px; }
+  .field-row{ display:flex; gap: 10px; }
+  .field-row > div{ flex:1; }
+  .btn-row{ display:flex; gap: 10px; margin-top: 4px; }
+  button.action{
+    flex:1; background: var(--brass); color: #14181f; border: none;
+    border-radius: var(--radius); padding: 11px; font-weight: 600;
+    font-size: 13.5px; cursor: pointer;
+  }
+  button.action.secondary{
+    background: transparent; border: 1px solid var(--brass-dim); color: var(--brass);
+  }
+  button.action:active{ opacity: 0.8; }
+  .output-box{
+    margin-top: 12px; background: var(--bg); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 12px; font-family: var(--mono);
+    font-size: 15px; word-break: break-all; min-height: 22px;
+  }
+  .error-box{
+    margin-top: 12px; color: var(--danger); font-size: 12.5px;
+    background: rgba(217,112,95,0.08); border: 1px solid rgba(217,112,95,0.3);
+    padding: 10px; border-radius: var(--radius);
+  }
+  .visual-note{ font-size: 12.5px; color: var(--text-dim); margin: 6px 0; line-height:1.5; }
+
+  /* ---------- code toggle ---------- */
+  .code-toggle{
+    background: transparent; border: 1px solid var(--line); color: var(--text-dim);
+    font-family: var(--mono); font-size: 12px; padding: 8px 12px;
+    border-radius: var(--radius); cursor: pointer; margin-top: 14px; width: 100%;
+    text-align: left;
+  }
+  pre.code-block{
+    background: #0d1015; border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px; margin-top: 8px; font-family: var(--mono); font-size: 12px;
+    line-height: 1.6; color: #b9c3d4; overflow-x: auto; white-space: pre;
+  }
+
+  /* ---------- substitution mapping visual ---------- */
+  .map-table{ overflow-x: auto; padding-bottom: 4px; }
+  .map-row{ display:flex; gap: 3px; }
+  .map-row span{
+    font-family: var(--mono); font-size: 12px; width: 20px; height: 24px;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .map-row.plain span{ color: var(--text-dim); }
+  .map-row.cipher span{ color: var(--brass); font-weight: 600; border-top: 1px solid var(--line); }
+
+  /* ---------- playfair ---------- */
+  .pf-grid{
+    display:grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
+    max-width: 260px; margin: 4px 0 12px;
+  }
+  .pf-cell{
+    background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
+    aspect-ratio: 1; display:flex; align-items:center; justify-content:center;
+    font-family: var(--mono); font-weight: 600; font-size: 15px;
+  }
+  .pf-pairs{ display:flex; flex-wrap: wrap; gap: 6px; }
+  .pf-pair{
+    display:flex; align-items:center; gap: 6px; background: var(--bg);
+    border: 1px solid var(--line); border-radius: var(--radius); padding: 5px 8px;
+  }
+  .pf-letters{ font-family: var(--mono); font-weight: 600; font-size: 13px; }
+  .pf-rule{ font-size: 10px; padding: 2px 6px; border-radius: var(--radius); }
+  .pf-rule-row{ background: rgba(201,151,75,0.15); color: var(--brass); }
+  .pf-rule-column{ background: rgba(111,174,127,0.15); color: var(--good); }
+  .pf-rule-rectangle{ background: rgba(139,147,163,0.15); color: var(--text-dim); }
+
+  /* ---------- hill ---------- */
+  .hill-matrix{
+    display: inline-flex; flex-direction: column; border-left: 2px solid var(--brass);
+    border-right: 2px solid var(--brass); padding: 4px 12px; margin: 6px 0;
+  }
+  .hill-row{ font-family: var(--mono); font-size: 15px; letter-spacing: 8px; }
+
+  /* ---------- vigenere ---------- */
+  .vig-table{ overflow-x: auto; padding-bottom: 6px; }
+  .vig-row{ display:flex; gap: 3px; margin-bottom: 3px; }
+  .vig-row span{
+    font-family: var(--mono); font-size: 13px; width: 20px; height: 24px;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .vig-row.key span{ color: var(--brass); border-top: 1px dashed var(--line); }
+
+  /* ---------- rail fence ---------- */
+  .rf-grid{
+    display:grid; gap: 3px; margin: 4px 0; overflow-x: auto; padding-bottom: 6px;
+  }
+  .rf-cell{
+    width: 22px; height: 22px; display:flex; align-items:center; justify-content:center;
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 2px;
+  }
+  .rf-cell:empty{ background: transparent; border-color: transparent; }
+
+  footer.note{
+    margin-top: 28px; font-size: 11.5px; color: var(--text-dim); text-align:center;
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ============================================================
+   MATH HELPERS
+   ============================================================ */
+const MOD = 26;
+function mod(n, m = MOD){ return ((n % m) + m) % m; }
+function gcd(a, b){ a = Math.abs(a); b = Math.abs(b); return b === 0 ? a : gcd(b, a % b); }
+function modInverse(a, m = MOD){
+  a = mod(a, m);
+  for (let x = 1; x < m; x++) if (mod(a * x, m) === 1) return x;
+  return null;
+}
+function cleanText(s){ return (s || '').toUpperCase().replace(/[^A-Z]/g, ''); }
+function letterToNum(c){ return c.charCodeAt(0) - 65; }
+function numToLetter(n){ return String.fromCharCode(mod(n) + 65); }
+const COPRIME_WITH_26 = [1,3,5,7,9,11,15,17,19,21,23,25];
+
+/* ============================================================
+   CIPHER ALGORITHMS
+   ============================================================ */
+
+/* ---- Shift Cipher ---- */
+function shiftEncrypt(text, k){
+  return cleanText(text).split('').map(c => numToLetter(letterToNum(c) + Number(k))).join('');
+}
+function shiftDecrypt(text, k){
+  return cleanText(text).split('').map(c => numToLetter(letterToNum(c) - Number(k))).join('');
+}
+
+/* ---- Multiplicative Cipher ---- */
+function multEncrypt(text, a){
+  a = Number(a);
+  return cleanText(text).split('').map(c => numToLetter(letterToNum(c) * a)).join('');
+}
+function multDecrypt(text, a){
+  const aInv = modInverse(Number(a));
+  return cleanText(text).split('').map(c => numToLetter(letterToNum(c) * aInv)).join('');
+}
+
+/* ---- Affine Cipher: E(p) = a*p + b, D(c) = a^-1 * (c - b) ---- */
+function affineEncrypt(text, a, b){
+  a = Number(a); b = Number(b);
+  return cleanText(text).split('').map(c => numToLetter(a * letterToNum(c) + b)).join('');
+}
+function affineDecrypt(text, a, b){
+  a = Number(a); b = Number(b);
+  const aInv = modInverse(a);
+  return cleanText(text).split('').map(c => numToLetter(aInv * (letterToNum(c) - b))).join('');
+}
+
+/* ---- Playfair Cipher ---- */
+function buildPlayfairGrid(keyword){
+  const key = cleanText(keyword).replace(/J/g, 'I');
+  const seen = new Set();
+  const letters = [];
+  for (const ch of key) if (!seen.has(ch)) { seen.add(ch); letters.push(ch); }
+  for (let i = 0; i < 26; i++) {
+    const ch = String.fromCharCode(65 + i);
+    if (ch === 'J') continue;
+    if (!seen.has(ch)) { seen.add(ch); letters.push(ch); }
+  }
+  const grid = [];
+  for (let r = 0; r < 5; r++) grid.push(letters.slice(r * 5, r * 5 + 5));
+  return grid;
+}
+function findPos(grid, ch){
+  for (let r = 0; r < 5; r++) { const c = grid[r].indexOf(ch); if (c !== -1) return { r, c }; }
+  return null;
+}
+function playfairDigraphs(text){
+  const t = cleanText(text).replace(/J/g, 'I');
+  const pairs = [];
+  let i = 0;
+  while (i < t.length) {
+    const a = t[i];
+    const b = (i + 1 < t.length) ? t[i + 1] : 'X';
+    if (a === b) { pairs.push([a, 'X']); i += 1; }
+    else { pairs.push([a, b]); i += 2; }
+  }
+  return pairs;
+}
+function playfairEncrypt(text, keyword){
+  const grid = buildPlayfairGrid(keyword);
+  return playfairDigraphs(text).map(([a, b]) => {
+    const pa = findPos(grid, a), pb = findPos(grid, b);
+    if (pa.r === pb.r) return grid[pa.r][mod(pa.c + 1, 5)] + grid[pb.r][mod(pb.c + 1, 5)];
+    if (pa.c === pb.c) return grid[mod(pa.r + 1, 5)][pa.c] + grid[mod(pb.r + 1, 5)][pb.c];
+    return grid[pa.r][pb.c] + grid[pb.r][pa.c];
+  }).join('');
+}
+function playfairDecrypt(text, keyword){
+  const grid = buildPlayfairGrid(keyword);
+  const t = cleanText(text);
+  const pairs = [];
+  for (let i = 0; i < t.length; i += 2) pairs.push([t[i], t[i + 1]]);
+  return pairs.map(([a, b]) => {
+    const pa = findPos(grid, a), pb = findPos(grid, b);
+    if (pa.r === pb.r) return grid[pa.r][mod(pa.c - 1, 5)] + grid[pb.r][mod(pb.c - 1, 5)];
+    if (pa.c === pb.c) return grid[mod(pa.r - 1, 5)][pa.c] + grid[mod(pb.r - 1, 5)][pb.c];
+    return grid[pa.r][pb.c] + grid[pb.r][pa.c];
+  }).join('');
+}
+
+/* ---- Hill Cipher (2x2) ---- */
+function hillMatrixFromKey(keyStr){
+  const nums = (keyStr || '').split(/[,\s]+/).filter(Boolean).map(Number);
+  if (nums.length !== 4 || nums.some(isNaN)) return null;
+  return [[nums[0], nums[1]], [nums[2], nums[3]]];
+}
+function matDet2(m){ return mod(m[0][0] * m[1][1] - m[0][1] * m[1][0]); }
+function matInverse2(m){
+  const det = matDet2(m);
+  const detInv = modInverse(det);
+  if (detInv === null) return null;
+  return [
+    [mod(m[1][1] * detInv), mod(-m[0][1] * detInv)],
+    [mod(-m[1][0] * detInv), mod(m[0][0] * detInv)]
+  ];
+}
+function hillTransform(text, matrix){
+  let t = cleanText(text);
+  if (t.length % 2 !== 0) t += 'X';
+  let out = '';
+  for (let i = 0; i < t.length; i += 2) {
+    const p1 = letterToNum(t[i]), p2 = letterToNum(t[i + 1]);
+    out += numToLetter(matrix[0][0] * p1 + matrix[0][1] * p2);
+    out += numToLetter(matrix[1][0] * p1 + matrix[1][1] * p2);
+  }
+  return out;
+}
+function hillEncrypt(text, keyStr){
+  const m = hillMatrixFromKey(keyStr);
+  if (!m) throw new Error('Key must be 4 numbers, e.g. "3 3 2 5" (a 2×2 matrix).');
+  return hillTransform(text, m);
+}
+function hillDecrypt(text, keyStr){
+  const m = hillMatrixFromKey(keyStr);
+  if (!m) throw new Error('Key must be 4 numbers, e.g. "3 3 2 5" (a 2×2 matrix).');
+  const inv = matInverse2(m);
+  if (!inv) throw new Error('This matrix has no inverse mod 26 (determinant must be coprime with 26).');
+  return hillTransform(text, inv);
+}
+
+/* ---- Vigenère Cipher ---- */
+function vigenereEncrypt(text, key){
+  const t = cleanText(text), k = cleanText(key);
+  if (!k) throw new Error('Enter a keyword.');
+  return t.split('').map((c, i) => numToLetter(letterToNum(c) + letterToNum(k[i % k.length]))).join('');
+}
+function vigenereDecrypt(text, key){
+  const t = cleanText(text), k = cleanText(key);
+  if (!k) throw new Error('Enter a keyword.');
+  return t.split('').map((c, i) => numToLetter(letterToNum(c) - letterToNum(k[i % k.length]))).join('');
+}
+
+/* ---- Rail Fence Cipher ---- */
+function railPattern(len, rails){
+  const pattern = [];
+  let r = 0, dir = 1;
+  for (let i = 0; i < len; i++) {
+    pattern.push(r);
+    if (r === 0) dir = 1; else if (r === rails - 1) dir = -1;
+    r += dir;
+  }
+  return pattern;
+}
+function railFenceEncrypt(text, rails){
+  rails = Number(rails);
+  const t = cleanText(text);
+  if (rails < 2) throw new Error('Number of rails must be 2 or more.');
+  const pattern = railPattern(t.length, rails);
+  const fence = Array.from({ length: rails }, () => []);
+  t.split('').forEach((ch, i) => fence[pattern[i]].push(ch));
+  return fence.flat().join('');
+}
+function railFenceDecrypt(text, rails){
+  rails = Number(rails);
+  const t = cleanText(text);
+  if (rails < 2) throw new Error('Number of rails must be 2 or more.');
+  const pattern = railPattern(t.length, rails);
+  const counts = Array(rails).fill(0);
+  pattern.forEach(r => counts[r]++);
+  const rows = [];
+  let idx = 0;
+  for (let i = 0; i < rails; i++) { rows.push(t.slice(idx, idx + counts[i]).split('')); idx += counts[i]; }
+  const ptr = Array(rails).fill(0);
+  return pattern.map(r => rows[r][ptr[r]++]).join('');
+}
+
+/* ============================================================
+   VISUALIZATIONS
+   ============================================================ */
+function renderSubstitutionVisual(el, mapFn){
+  const plain = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
+  let cipher;
+  try { cipher = plain.map(mapFn); } catch (e) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="map-table">
+    <div class="map-row plain">${plain.map(c => `<span>${c}</span>`).join('')}</div>
+    <div class="map-row cipher">${cipher.map(c => `<span>${c}</span>`).join('')}</div>
+  </div>`;
+}
+function renderPlayfairVisual(el, text, v){
+  const grid = buildPlayfairGrid(v.keyword || '');
+  const digraphs = playfairDigraphs(text || 'EXAMPLE');
+  const gridHtml = `<div class="pf-grid">${grid.map(row => row.map(ch => `<div class="pf-cell">${ch}</div>`).join('')).join('')}</div>`;
+  const listHtml = `<div class="pf-pairs">${digraphs.map(([a, b]) => {
+    const pa = findPos(grid, a), pb = findPos(grid, b);
+    const rule = pa.r === pb.r ? 'row' : pa.c === pb.c ? 'column' : 'rectangle';
+    return `<div class="pf-pair"><span class="pf-letters">${a}${b}</span><span class="pf-rule pf-rule-${rule}">${rule}</span></div>`;
+  }).join('')}</div>`;
+  el.innerHTML = `<p class="visual-note">5×5 key square (I/J share a cell):</p>${gridHtml}<p class="visual-note">Rule applied to each letter pair:</p>${listHtml}`;
+}
+function renderHillVisual(el, text, v){
+  const m = hillMatrixFromKey(v.matrix);
+  if (!m) { el.innerHTML = '<p class="visual-note">Enter 4 numbers for a 2×2 key matrix, e.g. "3 3 2 5".</p>'; return; }
+  let t = cleanText(text || 'HI');
+  if (t.length % 2 !== 0) t += 'X';
+  const p1 = letterToNum(t[0] || 'A'), p2 = letterToNum(t[1] || 'A');
+  const c1 = mod(m[0][0] * p1 + m[0][1] * p2), c2 = mod(m[1][0] * p1 + m[1][1] * p2);
+  el.innerHTML = `
+    <p class="visual-note">Key matrix:</p>
+    <div class="hill-matrix"><div class="hill-row">${m[0][0]}&nbsp;&nbsp;${m[0][1]}</div><div class="hill-row">${m[1][0]}&nbsp;&nbsp;${m[1][1]}</div></div>
+    <p class="visual-note">First block "${t[0]}${t[1]}" → plaintext vector (${p1}, ${p2})</p>
+    <p class="visual-note">c₁ = (${m[0][0]}×${p1} + ${m[0][1]}×${p2}) mod 26 = ${c1} → ${numToLetter(c1)}</p>
+    <p class="visual-note">c₂ = (${m[1][0]}×${p1} + ${m[1][1]}×${p2}) mod 26 = ${c2} → ${numToLetter(c2)}</p>
+  `;
+}
+function renderVigenereVisual(el, text, v){
+  const t = cleanText(text), k = cleanText(v.keyword || '');
+  if (!t || !k) { el.innerHTML = '<p class="visual-note">Enter text and a keyword to see the tableau alignment.</p>'; return; }
+  const keyRow = Array.from({ length: t.length }, (_, i) => k[i % k.length]);
+  el.innerHTML = `<p class="visual-note">Keyword repeated under the plaintext:</p>
+    <div class="vig-table">
+      <div class="vig-row">${t.split('').map(c => `<span>${c}</span>`).join('')}</div>
+      <div class="vig-row key">${keyRow.map(c => `<span>${c}</span>`).join('')}</div>
+    </div>`;
+}
+function renderRailFenceVisual(el, text, v){
+  const t = cleanText(text);
+  const rails = Number(v.rails) || 3;
+  if (!t || rails < 2) { el.innerHTML = '<p class="visual-note">Enter text and 2+ rails to see the zigzag.</p>'; return; }
+  const pattern = railPattern(t.length, rails);
+  let html = `<p class="visual-note">Zigzag placement across ${rails} rails:</p><div class="rf-grid" style="grid-template-columns:repeat(${t.length},22px)">`;
+  for (let r = 0; r < rails; r++) {
+    for (let i = 0; i < t.length; i++) html += `<div class="rf-cell">${pattern[i] === r ? t[i] : ''}</div>`;
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+/* ============================================================
+   MODULE DEFINITIONS (data-driven UI)
+   ============================================================ */
+const MODULES = [
+  {
+    id: 'shift', glyph: '⇌', name: 'Shift Cipher', desc: 'Caesar shift — additive substitution',
+    fields: [{ id: 'shift', label: 'Shift (k)', type: 'number', value: 3 }],
+    encrypt: (t, v) => shiftEncrypt(t, v.shift), decrypt: (t, v) => shiftDecrypt(t, v.shift),
+    validate: () => null,
+    visualize: (el, t, v) => renderSubstitutionVisual(el, c => numToLetter(letterToNum(c) + Number(v.shift))),
+    code: `function shiftEncrypt(text, k) {
+  return clean(text).split('').map(c =>
+    numToLetter(letterToNum(c) + k)
+  ).join('');
+}
+function shiftDecrypt(text, k) {
+  return shiftEncrypt(text, -k);
+}`
+  },
+  {
+    id: 'mult', glyph: '×', name: 'Multiplicative Cipher', desc: 'c = a·p mod 26, a coprime with 26',
+    fields: [{ id: 'a', label: 'Multiplier (a)', ty
